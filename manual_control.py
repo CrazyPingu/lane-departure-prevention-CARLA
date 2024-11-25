@@ -223,9 +223,8 @@ class World(object):
         cam_pos_index = self.camera_manager.transform_index if self.camera_manager is not None else 0
 
         # Get blueprint.
-        pattern = 'vehicle.mercedes.coupe_2020'
         blueprint_library = self.world.get_blueprint_library()
-        blueprint = blueprint_library.filter(pattern)[0]
+        blueprint = blueprint_library.filter(self._actor_filter)[0]
 
         blueprint.set_attribute('role_name', self.actor_role_name)
         if blueprint.has_attribute('terramechanics'):
@@ -815,71 +814,73 @@ class CameraManager(object):
 # -- game_loop() ---------------------------------------------------------------
 # ==============================================================================
 
+class GameLoop(object):
+    def __init__(self, args):
+        self.args = args
+        pygame.init()
+        pygame.font.init()
+        self.world = None
+        self.original_settings = None
 
-def game_loop(args):
-    pygame.init()
-    pygame.font.init()
-    world = None
-    original_settings = None
+        try:
+            client = carla.Client(args.host, args.port)
+            client.set_timeout(2000.0)
 
-    try:
-        client = carla.Client(args.host, args.port)
-        client.set_timeout(2000.0)
-
-        sim_world = client.get_world()
-        if args.sync:
-            original_settings = sim_world.get_settings()
-            settings = sim_world.get_settings()
-            if not settings.synchronous_mode:
-                settings.synchronous_mode = True
-                settings.fixed_delta_seconds = 0.05
-            sim_world.apply_settings(settings)
-
-            traffic_manager = client.get_trafficmanager()
-            traffic_manager.set_synchronous_mode(True)
-
-        if args.autopilot and not sim_world.get_settings().synchronous_mode:
-            print("WARNING: You are currently in asynchronous mode and could "
-                  "experience some issues with the traffic simulation")
-
-        display = pygame.display.set_mode(
-            (args.width, args.height),
-            pygame.HWSURFACE | pygame.DOUBLEBUF)
-        display.fill((0,0,0))
-        pygame.display.flip()
-
-        hud = HUD(args.width, args.height)
-        world = World(sim_world, hud, args)
-        controller = KeyboardControl(world)
-
-        if args.sync:
-            sim_world.tick()
-        else:
-            sim_world.wait_for_tick()
-
-        clock = pygame.time.Clock()
-        while True:
+            self.sim_world = client.get_world()
             if args.sync:
-                sim_world.tick()
-            clock.tick_busy_loop(60)
-            if controller.parse_events(world, clock):
-                return
-            world.tick(clock)
-            world.render(display)
+                original_settings = self.sim_world.get_settings()
+                settings = self.sim_world.get_settings()
+                if not settings.synchronous_mode:
+                    settings.synchronous_mode = True
+                    settings.fixed_delta_seconds = 0.05
+                self.sim_world.apply_settings(settings)
+
+                traffic_manager = client.get_trafficmanager()
+                traffic_manager.set_synchronous_mode(True)
+
+            if args.autopilot and not self.sim_world.get_settings().synchronous_mode:
+                print("WARNING: You are currently in asynchronous mode and could "
+                    "experience some issues with the traffic simulation")
+
+            self.display = pygame.display.set_mode(
+                (args.width, args.height),
+                pygame.HWSURFACE | pygame.DOUBLEBUF)
+            self.display.fill((0,0,0))
             pygame.display.flip()
 
-    finally:
+            hud = HUD(args.width, args.height)
+            self.world = World(self.sim_world, hud, args)
+            self.controller = KeyboardControl(self.world)
 
-        if original_settings:
-            sim_world.apply_settings(original_settings)
+            if args.sync:
+                self.sim_world.tick()
+            else:
+                self.sim_world.wait_for_tick()
+        except Exception:
+            logging.exception('Error creating the world')
 
-        if (world and world.recording_enabled):
-            client.stop_recorder()
+    def start(self):
+        try:
+            clock = pygame.time.Clock()
+            while True:
+                if self.args.sync:
+                    self.sim_world.tick()
+                clock.tick_busy_loop(60)
+                if self.controller.parse_events(self.world, clock):
+                    return
+                self.world.tick(clock)
+                self.world.render(self.display)
+                pygame.display.flip()
 
-        if world is not None:
-            world.destroy()
+        finally:
 
-        pygame.quit()
+            if self.original_settings:
+                self.sim_world.apply_settings(self.original_settings)
+
+            if self.world is not None:
+                self.world.destroy()
+
+            pygame.quit()
 
 
 # ==============================================================================
@@ -887,9 +888,8 @@ def game_loop(args):
 # ==============================================================================
 
 
-def main():
-    argparser = argparse.ArgumentParser(
-        description='CARLA Manual Control Client')
+def setup():
+    argparser = argparse.ArgumentParser(description='CARLA Manual Control Client')
     argparser.add_argument(
         '-v', '--verbose',
         action='store_true',
@@ -943,6 +943,9 @@ def main():
 
     args.width, args.height = [int(x) for x in args.res.split('x')]
 
+    # Set vehicle filter
+    args.filter = 'vehicle.mercedes.coupe_2020'
+
     log_level = logging.DEBUG if args.debug else logging.INFO
     logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
 
@@ -950,14 +953,4 @@ def main():
 
     print(__doc__)
 
-    try:
-
-        game_loop(args)
-
-    except KeyboardInterrupt:
-        print('\nCancelled by user. Bye!')
-
-
-if __name__ == '__main__':
-
-    main()
+    return GameLoop(args)
