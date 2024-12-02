@@ -941,6 +941,8 @@ def setup():
         help='Activate synchronous mode execution')
     args = argparser.parse_args()
 
+    # Set window resolution
+    # args.res = '500x300'
     args.width, args.height = [int(x) for x in args.res.split('x')]
 
     # Set vehicle filter
