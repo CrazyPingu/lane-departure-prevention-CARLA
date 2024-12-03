@@ -43,6 +43,7 @@ from __future__ import print_function
 import glob
 import os
 import sys
+import cv2
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -859,19 +860,26 @@ class GameLoop(object):
         except Exception:
             logging.exception('Error creating the world')
 
-    def start(self):
+    def start(self, processed_output):
         try:
             clock = pygame.time.Clock()
             while True:
                 if self.args.sync:
                     self.sim_world.tick()
-                clock.tick_busy_loop(60)
+                clock.tick_busy_loop(30)
                 if self.controller.parse_events(self.world, clock):
                     return
                 self.world.tick(clock)
                 self.world.render(self.display)
                 pygame.display.flip()
 
+                # Show processed camera output
+                try:
+                    cv2.imshow('Processed', processed_output.get_nowait())
+                    
+                except Exception:
+                    pass
+                cv2.waitKey(33)
         finally:
 
             if self.original_settings:
