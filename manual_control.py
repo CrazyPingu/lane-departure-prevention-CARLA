@@ -876,10 +876,9 @@ class GameLoop(object):
                 # Show processed camera output
                 try:
                     cv2.imshow('Processed', processed_output.get_nowait())
-                    
                 except Exception:
                     pass
-                cv2.waitKey(33)
+                cv2.waitKey(1)
         finally:
 
             if self.original_settings:

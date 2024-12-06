@@ -7,7 +7,7 @@ from utils.interpolator import Interpolator
 from utils.imagewarp import ImageWarp
 import time
 
-src = [[20, 240], [300, 240], [0, 0], [320, 0]]
+src = [[70, 240], [450, 240], [0, 0], [500, 0]]
 dst = [[135, 270], [150, 270], [0, 0], [320, 0]]
 scan_range={'start': 0, 'stop': 240, 'steps': 10}
 scan_window={'height': 8, 'max_adjust': 8}
@@ -29,14 +29,14 @@ else:
         {'label': 'right', 'detections': {'start': {'x': 145, 'y': 230}, 'stop': {'x': 175, 'y': 230}}}
         ]
 
-iw_obj = ImageWarp(offset=offset, src=src, dst=dst)
+iw_obj = ImageWarp(img_w=500, offset=offset, src=src, dst=dst)
 det_obj = Detector(scan_range=scan_range, scan_window=scan_window)
 ip_obj = Interpolator(max_poly_degree=2)
 
-def process_image(image):
+def process_image(image, res):
     start = time.time()
     if image is not None:
-        img = image
+        img = image.copy()
         # img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 
         f_img = det_obj.img_filter(img)
@@ -50,7 +50,7 @@ def process_image(image):
             detected_points = det_obj.get_lane_detections(f_w_img,start=lane['detections']['start'],stop=lane['detections']['stop'],label=lane['label'],use_RANSAC=True, debug=True)
             img_detected_points = det_obj.draw_detections(img_detected_points,detected_points[lane['label']])
 
-            interpolated_points = ip_obj.interpolate([detected_points],key=lane['label'],equ_selector=False,debug=False)
+            interpolated_points = ip_obj.interpolate([detected_points], scan_range,key=lane['label'],equ_selector=False,debug=False)
 
             pts = np.array([interpolated_points[lane['label']]])
             # cv2.polylines(img_line_fitted, [np.int32(pts)], False, [255], 2)
@@ -71,4 +71,5 @@ def process_image(image):
                 cv2.polylines(img, [ed_unwarped_pts_offset], False, color, 2)
 
         end = time.time()
-        return img, end - start
+        # return img, end - start
+        res.put(img)

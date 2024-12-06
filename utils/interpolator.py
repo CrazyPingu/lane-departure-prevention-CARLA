@@ -31,6 +31,7 @@ class Interpolator():
         if equ_selector == True:
             # find the best fit
             best_poly = []
+            best_fit = []
             for i in range(0,self.max_poly_degree):
                 pfit = np.polyfit(y_coord,x_coord,i)
                 polynom = np.poly1d(pfit)
@@ -38,9 +39,7 @@ class Interpolator():
                 difference= y_coord-test_y
                 st_d = np.std(difference)                
                 best_poly.append(st_d)
-
-                if debug==True:
-                    print ("polynom: ",polynom, "mse: ",mse)
+                best_fit.append((pfit, polynom))
 
             # select best poly
             min_mse_pos = np.argmin(np.array(best_poly))
@@ -48,6 +47,7 @@ class Interpolator():
         # order start from 1, position from 0
         pfit = np.polyfit(y_coord,x_coord,min_mse_pos)
         polynom = np.poly1d(pfit)
+        # pfit, polynom = best_fit[min_mse_pos]
         
         y_ipp = np.float32(np.linspace(ip_params['start'],ip_params['stop'],ip_params['steps']))
         x_ipp = polynom(y_ipp)
