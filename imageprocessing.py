@@ -21,8 +21,10 @@ ESTIMATE_FROM_1_LANE = False
 
 if ESTIMATE_FROM_1_LANE == False:
     lanes =[
-        {'label': 'mid', 'detections': {'start': {'x': 115, 'y': 230}, 'stop': {'x': 145, 'y': 230}}},
-        {'label': 'right', 'detections': {'start': {'x': 145, 'y': 230}, 'stop': {'x': 175, 'y': 230}}}
+        # {'label': 'mid', 'detections': {'start': {'x': 115, 'y': 230}, 'stop': {'x': 145, 'y': 230}}},
+        # {'label': 'right', 'detections': {'start': {'x': 145, 'y': 230}, 'stop': {'x': 175, 'y': 230}}}
+        {'label': 'mid', 'detections': {'start': {'x': 110, 'y': 230}, 'stop': {'x': 145, 'y': 230}}},
+        {'label': 'right', 'detections': {'start': {'x': 145, 'y': 230}, 'stop': {'x': 180, 'y': 230}}}
         ]
 else:
     lanes =[
@@ -34,17 +36,22 @@ det_obj = Detector(scan_range=scan_range, scan_window=scan_window)
 ip_obj = Interpolator(max_poly_degree=2)
 
 def process_image(image, res):
-    start = time.time()
-    if image is not None:
+    # start = time.time()
+    img = image.copy()
+    f_img = det_obj.img_filter(img)
+    f_w_img = iw_obj.img_warp(f_img,offset=True)
+    try:
         img = image.copy()
         # img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 
         f_img = det_obj.img_filter(img)
         f_w_img = iw_obj.img_warp(f_img,offset=True)
+
         color = [1,1,1]
 
         img_detected_points = f_w_img.copy()
         # img_line_fitted = f_w_img.copy()
+        debug = f_w_img.copy()
 
         for i,lane in enumerate(lanes):
             detected_points = det_obj.get_lane_detections(f_w_img,start=lane['detections']['start'],stop=lane['detections']['stop'],label=lane['label'],use_RANSAC=True, debug=True)
@@ -54,6 +61,7 @@ def process_image(image, res):
 
             pts = np.array([interpolated_points[lane['label']]])
             # cv2.polylines(img_line_fitted, [np.int32(pts)], False, [255], 2)
+            cv2.polylines(debug, [np.int32(pts)], False, [155], 2)
 
             unwarped_pts = np.int32(iw_obj.pts_unwarp(pts))
             unwarped_pts_offset = np.add(unwarped_pts,[0,offset])
@@ -70,6 +78,26 @@ def process_image(image, res):
 
                 cv2.polylines(img, [ed_unwarped_pts_offset], False, color, 2)
 
-        end = time.time()
+
+            start_x = lane['detections']['start']['x']
+            start_y = lane['detections']['start']['y']
+            stop_x = lane['detections']['stop']['x']
+            stop_y = lane['detections']['stop']['y']
+            cv2.rectangle(debug, (start_x, start_y), (stop_x, stop_y), (255, 255, 255), 2)
+
+        # cv2.rectangle(img, (0, 0), (320, 240), (255, 255, 255), 2)
+        cv2.rectangle(debug, (145, 220), (145, 250), (255, 255, 255), 2)
+        concat_img = cv2.hconcat([img, cv2.cvtColor(debug[:, :320], cv2.COLOR_GRAY2RGB)])
+
+
+        res.put(concat_img)
+    except Exception as e:
+        start_x = lane['detections']['start']['x']
+        start_y = lane['detections']['start']['y']
+        stop_x = lane['detections']['stop']['x']
+        stop_y = lane['detections']['stop']['y']
+        cv2.rectangle(f_w_img, (start_x, start_y), (stop_x, stop_y), (255, 255, 255), 2)
+        concat_img = cv2.hconcat([image, cv2.cvtColor(f_w_img[:, :320], cv2.COLOR_GRAY2RGB)])
+        res.put(concat_img)
+        # end = time.time()
         # return img, end - start
-        res.put(img)

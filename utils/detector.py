@@ -64,10 +64,15 @@ class Detector():
             
             # get peek location
             peek = np.argmax(hist)
+            # peaks, _ = find_peaks(hist, height=np.average(hist))
             
             # define threshold = average, find peeks, 
             # update 'sensor location'= peek centered
             if hist[peek] > np.average(hist):
+            # if len(peaks) > 0:
+            #     # Select the central peak
+            #     peak = peaks[len(peaks) // 2]
+                
                 x1 = minx+peek
                 y1 = y
                 det_mid_x = minx+len(hist)//2
