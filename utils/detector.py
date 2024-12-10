@@ -97,7 +97,8 @@ class Detector():
             if inliers is not None:
                 detections = np.array(detections)[inliers]
 
-        return {label:detections}
+        return detections
+        # return {label:detections}
                       
     def filter_outliers(self,data):
         """

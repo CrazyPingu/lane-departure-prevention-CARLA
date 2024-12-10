@@ -24,9 +24,9 @@ class Interpolator():
 
         x_coord = data[:,0]
         y_coord = data[:,1]
-        
+
         min_mse_pos = self.max_poly_degree
-        
+
         # polynomial degree selector
         if equ_selector == True:
             # find the best fit
@@ -37,7 +37,7 @@ class Interpolator():
                 polynom = np.poly1d(pfit)
                 test_y = polynom(x_coord)
                 difference= y_coord-test_y
-                st_d = np.std(difference)                
+                st_d = np.std(difference)
                 best_poly.append(st_d)
                 best_fit.append((pfit, polynom))
 
@@ -48,13 +48,13 @@ class Interpolator():
         pfit = np.polyfit(y_coord,x_coord,min_mse_pos)
         polynom = np.poly1d(pfit)
         # pfit, polynom = best_fit[min_mse_pos]
-        
+
         y_ipp = np.float32(np.linspace(ip_params['start'],ip_params['stop'],ip_params['steps']))
         x_ipp = polynom(y_ipp)
 
         ply_coords = np.column_stack((x_ipp,y_ipp))
         return {key:ply_coords}
-    
+
     def echidistant_lane(self, lane_pts, distnce=40, return_end_point=True,lane_side=1):
         """
         Generates an equidistant curve based on the perpendicular ponts of the givin curve and disctance
