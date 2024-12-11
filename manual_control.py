@@ -860,7 +860,8 @@ class GameLoop(object):
         except Exception:
             logging.exception('Error creating the world')
 
-    def start(self, processed_output):
+    def start(self, processed_output, autopilot = False):
+        self.world.player.set_autopilot(autopilot)
         try:
             clock = pygame.time.Clock()
             while True:
