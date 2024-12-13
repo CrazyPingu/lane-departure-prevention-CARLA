@@ -35,14 +35,12 @@ ip_obj = Interpolator(max_poly_degree=2)
 
 
 def proportional_spaced_array(pts, min_value, max_value):
-    print('pts:', pts)
     delta_dist = max_value - min_value
     pts_max = pts[0]
     pts_min = pts[len(pts) - 1]
     delta_pts = pts_max - pts_min
 
     buffer = []
-    print('pts:', pts)
     for i in range(0, len(pts)):
         buffer.append(delta_dist * (pts_max - pts[i]) / delta_pts + min_value)
 
