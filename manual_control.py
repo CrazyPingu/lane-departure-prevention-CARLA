@@ -822,6 +822,10 @@ class GameLoop(object):
         pygame.font.init()
         self.world = None
         self.original_settings = None
+        # steer_cache is used to apply small steering corrections.
+        self.steer_cache = None
+        self.ticks = 0
+        self.fps = args.maxfps
 
         try:
             client = carla.Client(args.host, args.port)
@@ -860,14 +864,14 @@ class GameLoop(object):
         except Exception:
             logging.exception('Error creating the world')
 
-    def start(self, processed_output, autopilot = False):
+    def start(self, processed_output, autopilot=False, detection_center=100, threshold=20):
         self.world.player.set_autopilot(autopilot)
         try:
             clock = pygame.time.Clock()
             while True:
                 if self.args.sync:
                     self.sim_world.tick()
-                clock.tick_busy_loop(30)
+                clock.tick_busy_loop(self.fps)
                 if self.controller.parse_events(self.world, clock):
                     return
                 self.world.tick(clock)
@@ -876,7 +880,25 @@ class GameLoop(object):
 
                 # Show processed camera output
                 try:
-                    cv2.imshow('Processed image', processed_output.get_nowait()['img'])
+                    output = processed_output.get_nowait()
+                    cv2.imshow('Processed image', output['img'])
+
+                    if output['left_lane'] is not None:
+                        left = output['left_lane']
+                        if left > detection_center - threshold:
+                            print(f'\033[94mSteering left:\033[0m', left, detection_center - threshold)
+
+                    if output['right_lane'] is not None:
+                        right = output['right_lane']
+                        if right < detection_center + threshold:
+                            print('\033[92mSteering right:\033[0m', right, detection_center + threshold)
+                    
+                    if self.steer_cache is not None and self.ticks > 0:
+                        #self.world.controller._steer_cache = self.steer_cache
+                        self.ticks -= 1
+                        self.steer_cache = None
+
+
                 except Exception:
                     pass
                 cv2.waitKey(1)
@@ -947,7 +969,15 @@ def setup():
         '--sync',
         action='store_true',
         help='Activate synchronous mode execution')
+    argparser.add_argument(
+        '--maxfps',
+        default=30,
+        type=int,
+        help='Fps of the client (default: 30)')
     args = argparser.parse_args()
+
+    # Set max fps
+    # args.maxfps = 30
 
     # Set window resolution
     # args.res = '500x300'
