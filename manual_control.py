@@ -43,7 +43,6 @@ from __future__ import print_function
 import glob
 import os
 import sys
-import cv2
 
 try:
     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
@@ -64,7 +63,6 @@ import carla
 from carla import ColorConverter as cc
 
 import argparse
-import collections
 import datetime
 import logging
 import math
@@ -78,42 +76,24 @@ try:
     from pygame.locals import KMOD_SHIFT
     from pygame.locals import K_0
     from pygame.locals import K_9
-    from pygame.locals import K_BACKQUOTE
-    from pygame.locals import K_BACKSPACE
-    from pygame.locals import K_COMMA
     from pygame.locals import K_DOWN
     from pygame.locals import K_ESCAPE
     from pygame.locals import K_F1
     from pygame.locals import K_LEFT
-    from pygame.locals import K_PERIOD
     from pygame.locals import K_RIGHT
-    from pygame.locals import K_SLASH
     from pygame.locals import K_SPACE
     from pygame.locals import K_TAB
     from pygame.locals import K_UP
     from pygame.locals import K_a
-    from pygame.locals import K_b
     from pygame.locals import K_c
     from pygame.locals import K_d
-    from pygame.locals import K_f
-    from pygame.locals import K_g
-    from pygame.locals import K_h
-    from pygame.locals import K_i
     from pygame.locals import K_l
-    from pygame.locals import K_m
     from pygame.locals import K_n
-    from pygame.locals import K_o
-    from pygame.locals import K_p
     from pygame.locals import K_q
-    from pygame.locals import K_r
     from pygame.locals import K_s
-    from pygame.locals import K_t
-    from pygame.locals import K_v
     from pygame.locals import K_w
     from pygame.locals import K_x
     from pygame.locals import K_z
-    from pygame.locals import K_MINUS
-    from pygame.locals import K_EQUALS
 except ImportError:
     raise RuntimeError('cannot import pygame, make sure pygame package is installed')
 
@@ -341,7 +321,7 @@ class World(object):
 
 class KeyboardControl(object):
     """Class that handles keyboard input."""
-    def __init__(self, world):
+    def __init__(self):
         self._ackermann_enabled = False
         self._ackermann_reverse = 1
         self._control = carla.VehicleControl()
@@ -809,188 +789,3 @@ class CameraManager(object):
         array = array[:, :, :3]
         array = array[:, :, ::-1]
         self.surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
-
-
-# ==============================================================================
-# -- game_loop() ---------------------------------------------------------------
-# ==============================================================================
-
-class GameLoop(object):
-    def __init__(self, args):
-        self.args = args
-        pygame.init()
-        pygame.font.init()
-        self.world = None
-        self.original_settings = None
-        # steer_cache is used to apply small steering corrections.
-        self.steer_cache = None
-        self.ticks = 0
-        self.fps = args.maxfps
-
-        try:
-            client = carla.Client(args.host, args.port)
-            client.set_timeout(2000.0)
-
-            self.sim_world = client.get_world()
-            if args.sync:
-                original_settings = self.sim_world.get_settings()
-                settings = self.sim_world.get_settings()
-                if not settings.synchronous_mode:
-                    settings.synchronous_mode = True
-                    settings.fixed_delta_seconds = 0.05
-                self.sim_world.apply_settings(settings)
-
-                traffic_manager = client.get_trafficmanager()
-                traffic_manager.set_synchronous_mode(True)
-
-            if args.autopilot and not self.sim_world.get_settings().synchronous_mode:
-                print("WARNING: You are currently in asynchronous mode and could "
-                    "experience some issues with the traffic simulation")
-
-            self.display = pygame.display.set_mode(
-                (args.width, args.height),
-                pygame.HWSURFACE | pygame.DOUBLEBUF)
-            self.display.fill((0,0,0))
-            pygame.display.flip()
-
-            hud = HUD(args.width, args.height)
-            self.world = World(self.sim_world, hud, args)
-            self.controller = KeyboardControl(self.world)
-
-            if args.sync:
-                self.sim_world.tick()
-            else:
-                self.sim_world.wait_for_tick()
-        except Exception:
-            logging.exception('Error creating the world')
-
-    def start(self, processed_output, autopilot=False, detection_center=100, threshold=20):
-        self.world.player.set_autopilot(autopilot)
-        try:
-            clock = pygame.time.Clock()
-            while True:
-                if self.args.sync:
-                    self.sim_world.tick()
-                clock.tick_busy_loop(self.fps)
-                if self.controller.parse_events(self.world, clock):
-                    return
-                self.world.tick(clock)
-                self.world.render(self.display)
-                pygame.display.flip()
-
-                # Show processed camera output
-                try:
-                    output = processed_output.get_nowait()
-                    cv2.imshow('Processed image', output['img'])
-
-                    if output['left_lane'] is not None:
-                        left = output['left_lane']
-                        if left > detection_center - threshold:
-                            print(f'\033[94mSteering left:\033[0m', left, detection_center - threshold)
-
-                    if output['right_lane'] is not None:
-                        right = output['right_lane']
-                        if right < detection_center + threshold:
-                            print('\033[92mSteering right:\033[0m', right, detection_center + threshold)
-                    
-                    if self.steer_cache is not None and self.ticks > 0:
-                        #self.world.controller._steer_cache = self.steer_cache
-                        self.ticks -= 1
-                        self.steer_cache = None
-
-
-                except Exception:
-                    pass
-                cv2.waitKey(1)
-        finally:
-
-            if self.original_settings:
-                self.sim_world.apply_settings(self.original_settings)
-
-            if self.world is not None:
-                self.world.destroy()
-
-            pygame.quit()
-
-
-# ==============================================================================
-# -- main() --------------------------------------------------------------------
-# ==============================================================================
-
-
-def setup():
-    argparser = argparse.ArgumentParser(description='CARLA Manual Control Client')
-    argparser.add_argument(
-        '-v', '--verbose',
-        action='store_true',
-        dest='debug',
-        help='print debug information')
-    argparser.add_argument(
-        '--host',
-        metavar='H',
-        default='127.0.0.1',
-        help='IP of the host server (default: 127.0.0.1)')
-    argparser.add_argument(
-        '-p', '--port',
-        metavar='P',
-        default=2000,
-        type=int,
-        help='TCP port to listen to (default: 2000)')
-    argparser.add_argument(
-        '-a', '--autopilot',
-        action='store_true',
-        help='enable autopilot')
-    argparser.add_argument(
-        '--res',
-        metavar='WIDTHxHEIGHT',
-        default='1280x720',
-        help='window resolution (default: 1280x720)')
-    argparser.add_argument(
-        '--filter',
-        metavar='PATTERN',
-        default='vehicle.*',
-        help='actor filter (default: "vehicle.*")')
-    argparser.add_argument(
-        '--generation',
-        metavar='G',
-        default='2',
-        help='restrict to certain actor generation (values: "1","2","All" - default: "2")')
-    argparser.add_argument(
-        '--rolename',
-        metavar='NAME',
-        default='hero',
-        help='actor role name (default: "hero")')
-    argparser.add_argument(
-        '--gamma',
-        default=2.2,
-        type=float,
-        help='Gamma correction of the camera (default: 2.2)')
-    argparser.add_argument(
-        '--sync',
-        action='store_true',
-        help='Activate synchronous mode execution')
-    argparser.add_argument(
-        '--maxfps',
-        default=30,
-        type=int,
-        help='Fps of the client (default: 30)')
-    args = argparser.parse_args()
-
-    # Set max fps
-    # args.maxfps = 30
-
-    # Set window resolution
-    # args.res = '500x300'
-    args.width, args.height = [int(x) for x in args.res.split('x')]
-
-    # Set vehicle filter
-    args.filter = 'vehicle.mercedes.coupe_2020'
-
-    log_level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
-
-    logging.info('listening to server %s:%s', args.host, args.port)
-
-    print(__doc__)
-
-    return GameLoop(args)
