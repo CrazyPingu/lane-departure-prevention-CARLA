@@ -163,11 +163,7 @@ class World(object):
             sys.exit(1)
         self.hud = hud
         self.player = None
-        self.collision_sensor = None
         self.lane_invasion_sensor = None
-        self.gnss_sensor = None
-        self.imu_sensor = None
-        self.radar_sensor = None
         self.camera_manager = None
         self._weather_presets = find_weather_presets()
         self._weather_index = 0
@@ -176,6 +172,7 @@ class World(object):
         self._gamma = args.gamma
         self.restart()
         self.world.on_tick(hud.on_world_tick)
+
         self.recording_enabled = False
         self.recording_start = 0
         self.constant_velocity_enabled = False
@@ -358,7 +355,7 @@ class KeyboardControl(object):
                         index_ctrl = 9
                     world.camera_manager.set_sensor(event.key - 1 - K_0 + index_ctrl)
                 if isinstance(self._control, carla.VehicleControl):
-                    # Q -> switch gears
+                    # Q -> Switch gears (reverse/forward)
                     if event.key == K_q:
                         if not self._ackermann_enabled:
                             self._control.gear = 1 if self._control.reverse else -1
