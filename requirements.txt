@@ -1,0 +1,6 @@
+carla
+numpy
+python-opencv
+pygame
+scikit-image
+paho-mqtt
