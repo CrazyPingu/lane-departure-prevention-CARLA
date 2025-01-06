@@ -28,6 +28,7 @@ Use ARROWS or WASD keys for control.
     [1-9]        : change to sensor [1-9]
     C            : change weather (Shift+C reverse)
 
+    H            : toggle help
     F1           : toggle HUD
     ESC          : quit
 """
@@ -74,6 +75,7 @@ try:
     import pygame
     from pygame.locals import KMOD_CTRL
     from pygame.locals import KMOD_SHIFT
+    from pygame.locals import K_SLASH
     from pygame.locals import K_0
     from pygame.locals import K_9
     from pygame.locals import K_DOWN
@@ -87,6 +89,7 @@ try:
     from pygame.locals import K_a
     from pygame.locals import K_c
     from pygame.locals import K_d
+    from pygame.locals import K_h
     from pygame.locals import K_l
     from pygame.locals import K_n
     from pygame.locals import K_q
@@ -297,8 +300,6 @@ class World(object):
         self.camera_manager.index = None
 
     def destroy(self):
-        if self.radar_sensor is not None:
-            self.toggle_radar()
         sensors = [
             self.camera_manager.sensor,
             self.lane_invasion_sensor.sensor,
@@ -354,6 +355,9 @@ class KeyboardControl(object):
                     if pygame.key.get_mods() & KMOD_CTRL:
                         index_ctrl = 9
                     world.camera_manager.set_sensor(event.key - 1 - K_0 + index_ctrl)
+                # H -> Toggle help text
+                elif event.key == K_h or (event.key == K_SLASH and pygame.key.get_mods() & KMOD_SHIFT):
+                    world.hud.help.toggle()
                 if isinstance(self._control, carla.VehicleControl):
                     # Q -> Switch gears (reverse/forward)
                     if event.key == K_q:
