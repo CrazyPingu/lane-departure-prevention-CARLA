@@ -29,6 +29,7 @@ Use steering wheel to control the vehicle.
    L3               : toggle left blinker
    R3               : toggle right blinker
 
+   H                : toggle help
    ESC              : quit
 
 """
