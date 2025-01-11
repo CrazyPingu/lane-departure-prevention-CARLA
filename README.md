@@ -10,11 +10,13 @@ This project aims to develop a *lane departure prevention* system using a front 
 
 ## Run
 
-The server is run at ***localhost:2000*** by default.
+The Carla server is run at ***localhost:2000*** by default.
 
 Below the steps necessary to try the system:
 
 1. Run an instance of the *Carla server* (tested on **Carla 0.9.15**)
 2. Run the ***lane_departure_prevention*** python notebook
 
-According to the *input device* you want to use run the corresponding cell in the python notebook.
+According to the *input device* you want to use, run the corresponding cell in the python notebook.
+
+If you are using a *steering wheel* peripheral, make sure to modify ***wheel_config.ini*** in order to have a correct mapping of the signals sent from your input device.
