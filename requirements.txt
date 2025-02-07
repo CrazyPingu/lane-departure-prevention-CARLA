@@ -1,6 +1,6 @@
 carla
 numpy
-python-opencv
+opencv-python
 pygame
 scikit-image
 paho-mqtt
