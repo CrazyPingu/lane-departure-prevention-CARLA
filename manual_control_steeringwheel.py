@@ -477,8 +477,10 @@ class DualControl(object):
             brakeCmd = 1
 
         self._control.steer = steerCmd
-        self._control.brake = brakeCmd
-        self._control.throttle = throttleCmd
+        # self._control.brake = brakeCmd  # for G29
+        # self._control.throttle = throttleCmd  # for G29
+        self._control.brake = 1 - brakeCmd  # for G PRO
+        self._control.throttle = 1 - throttleCmd  # for G PRO
 
         #toggle = jsButtons[self._reverse_idx]
 
